@@ -6,24 +6,17 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"olx_api/internal/config"
+	"olx_api/internal/handlers"
 	"time"
 )
 
 func main() {
-	cfg:= config.MustLoad()
+	cfg := config.MustLoad()
 
 	fmt.Println("Server is starting on port", cfg.Port)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json") //for setting up response header
-		w.WriteHeader(http.StatusOK)                       // to set status code 200
-
-		w.Write([]byte(`{
-			"status": "ok",
-			"message": "server is Healthy"
-		}`))
-	})
+	mux.HandleFunc("GET /health",handlers.HealthzHandler)
 
 	srv := http.Server{
 		Addr:         ":" + cfg.Port,
