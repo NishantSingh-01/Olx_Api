@@ -5,13 +5,20 @@ import (
 	"log"
 	"net/http"
 	_ "net/http/pprof"
-	"olx_api/internal/config"
-	"olx_api/internal/handlers"
 	"time"
+
+	"olx_api/internal/config"
+	"olx_api/internal/database"
+	"olx_api/internal/handlers"
 )
 
 func main() {
 	cfg := config.MustLoad()
+	_, err := database.Connect(cfg.DatabaseURL)
+	if err != nil {
+		log.Fatalf("main: database.Connect: Database Connection failed : %v", err)
+	}
+	
 
 	fmt.Println("Server is starting on port", cfg.Port)
 
