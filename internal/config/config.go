@@ -14,7 +14,7 @@ type Config struct {
 
 
 func MustLoad() Config {
-	godotenv.Load()
+	_ = godotenv.Load()
 
 	port := os.Getenv("PORT")
 	if port == "" {

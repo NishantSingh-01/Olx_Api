@@ -24,6 +24,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health",handlers.HealthzHandler)
+	mux.HandleFunc("GET /list",handlers.List)
 
 	srv := http.Server{
 		Addr:         ":" + cfg.Port,
