@@ -14,7 +14,7 @@ import (
 
 func main() {
 	cfg := config.MustLoad()
-	_, err := database.Connect(cfg.DatabaseURL)
+	db, err := database.Connect(cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("main: database.Connect: Database Connection failed : %v", err)
 	}
@@ -24,7 +24,10 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health",handlers.HealthzHandler)
-	mux.HandleFunc("GET /list",handlers.List)
+	//listing handler
+	mux.HandleFunc("GET /listing",handlers.ListingHandler(db))
+	mux.HandleFunc("DELETE /listing/{id}",handlers.DeleteListing(db))
+	mux.HandleFunc("POST /listing",handlers.CreateListing(db))
 
 	srv := http.Server{
 		Addr:         ":" + cfg.Port,

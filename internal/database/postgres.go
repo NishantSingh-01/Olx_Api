@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"time"
+	
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
@@ -14,7 +15,6 @@ func Connect(db_Url string) (*sql.DB, error) {  // todo to look o it and other v
 	if err != nil {
 		return nil, fmt.Errorf("SQL.Open : Database Connection failed : %w", err)
 	}
-
 	db.SetMaxOpenConns(25)
 	db.SetMaxIdleConns(25)
 	db.SetConnMaxLifetime(5*time.Minute)
@@ -30,3 +30,4 @@ func Connect(db_Url string) (*sql.DB, error) {  // todo to look o it and other v
 	log.Println("Database connection successful")
 	return db, nil
 }
+
