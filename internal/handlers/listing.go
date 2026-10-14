@@ -145,4 +145,71 @@ func CreateListing(db *sql.DB) http.HandlerFunc {
 
 	}
 }
+func UpdateListing(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		if strings.TrimSpace(id) == "" {
+			http.Error(w, "Listing ID is required", http.StatusBadRequest)
+			return
+		}
+		var input ListingInput
+		err := json.NewDecoder(r.Body).Decode(&input)
+		if err != nil {
+			log.Printf("Update : Decode Error : %v", err)
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+		if strings.TrimSpace(input.Title) == "" || strings.TrimSpace(input.City) == "" || strings.TrimSpace(input.Description) == "" {
+			http.Error(w, "All fields are required", http.StatusBadRequest)
+			return
+		}
+		if input.Price < 0 {
+			http.Error(w, "Price cannot be negative", http.StatusBadRequest)
+			return
+		}
+		status := input.Status
+		if strings.TrimSpace(status) == "" {
+			status = "active"
+		}
+		var listing Listing
+		err = db.QueryRow(`
+		UPDATE listings
+		SET title = $1,
+			description = $2,
+			price = $3,
+			city = $4,
+			status = $5
+		WHERE id = $6
+		RETURNING id, title, description, price, city, status, created_at
+	`,
+			strings.TrimSpace(input.Title),
+			strings.TrimSpace(input.Description),
+			input.Price,
+			strings.TrimSpace(input.City),
+			status,
+			id,
+		).Scan(
+			&listing.ID,
+			&listing.Title,
+			&listing.Description,
+			&listing.Price,
+			&listing.City,
+			&listing.Status,
+			&listing.CreatedAt,
+		)
 
+		if err != nil {
+			if err == sql.ErrNoRows {
+				http.Error(w, "Listing not found", http.StatusNotFound)
+				return
+			}
+
+			log.Printf("Update: Database Error: %v", err)
+			http.Error(w, "Database update failed", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(listing)
+	}
+}
