@@ -213,3 +213,40 @@ func UpdateListing(db *sql.DB) http.HandlerFunc {
 		_ = json.NewEncoder(w).Encode(listing)
 	}
 }
+
+func GetListingByID(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		if id == "" {
+			http.Error(w,"Listing ID is required",http.StatusBadRequest)
+			return
+		}
+		var listing Listing
+		err := db.QueryRow(`
+		SELECT id , title , description , price , city , status , created_at 
+		FROM listings
+		WHERE id = $1
+		`,id).Scan(
+			&listing.ID,
+			&listing.Title,
+			&listing.Description,
+			&listing.Price,
+			&listing.City,
+			&listing.Status,
+			&listing.CreatedAt,
+		)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				http.Error(w, "Listing not found", http.StatusNotFound)
+				return
+			}
+			log.Printf("GetByID : Database Error : %v", err)
+			http.Error(w, "Database query failed", http.StatusInternalServerError)
+			return
+		}
+		
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]Listing{"listing found successfully":listing})	
+	}
+}

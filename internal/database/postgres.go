@@ -1,5 +1,6 @@
 package database
 
+
 import (
 	"context"
 	"database/sql"
@@ -17,7 +18,7 @@ func Connect(db_Url string) (*sql.DB, error) {  // todo to look o it and other v
 	}
 	db.SetMaxOpenConns(25)
 	db.SetMaxIdleConns(25)
-	db.SetConnMaxLifetime(5*time.Minute)
+	db.SetConnMaxLifetime(10 *time.Minute)
 
 	// fail test here:
 	ctx,cancel := context.WithTimeout(context.Background(),5*time.Second)

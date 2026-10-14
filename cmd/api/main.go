@@ -29,6 +29,7 @@ func main() {
 	mux.HandleFunc("DELETE /listing/{id}",handlers.DeleteListing(db))
 	mux.HandleFunc("POST /listing",handlers.CreateListing(db))
 	mux.HandleFunc("PUT /listing/{id}",handlers.UpdateListing(db))
+	mux.HandleFunc("GET /listing/{id}",handlers.GetListingByID(db))
 
 	srv := http.Server{
 		Addr:         ":" + cfg.Port,
