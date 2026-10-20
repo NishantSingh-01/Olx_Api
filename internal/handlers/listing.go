@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"olx_api/internal/middleware"
 )
 
 // listing handeler
@@ -43,7 +44,7 @@ func NewListing_Handler(db *sql.DB, logger *slog.Logger) *Listing_Handler {
 
 func (lh *Listing_Handler) ListingHandler(w http.ResponseWriter, r *http.Request) {
 
-	ctx, cancle := context.WithTimeout(r.Context(), 3*time.Second)
+	ctx, cancle := context.WithTimeout(r.Context(), 3*time.Second)//this is by gpt to stop cancelled query ohter method is direct to the cts pass there 
 	defer cancle()
 	rows, err := lh.db.QueryContext(
 		ctx,
@@ -87,7 +88,7 @@ func (lh *Listing_Handler) ListingHandler(w http.ResponseWriter, r *http.Request
 func (lh *Listing_Handler) DeleteListing(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	ctx := r.Context()
-
+	requestId := middleware.GetRequestID(ctx)
 	// slog.Debug("Delete Debug : id","listing_delete", id) //1
 	// slog.Info("Delete Info : id","listing_delete", id) //2
 	// slog.Warn("Delete warn: id","listing_delete", id) //3
@@ -98,14 +99,14 @@ func (lh *Listing_Handler) DeleteListing(w http.ResponseWriter, r *http.Request)
 	   WHERE id = $1 
 	   `, id)
 	if err != nil {
-		lh.logger.Error("Delete : Exec Error", "listing_delete", id, "Error", err)
+		lh.logger.Error("Delete : Exec Error", "listing_delete", id,"requestId",requestId ,"Error", err)
 		http.Error(w, "Database query failed", http.StatusInternalServerError)
 		return
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		lh.logger.Error("Delete : RowsAffected Error", "listing_delete", id, "Error", err)
+		lh.logger.Error("Delete : RowsAffected Error", "listing_delete", id,"requestId",requestId , "Error", err)
 		http.Error(w, "Database query failed", http.StatusInternalServerError)
 		return
 	}

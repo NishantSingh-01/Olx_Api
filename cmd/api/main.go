@@ -12,6 +12,7 @@ import (
 	"olx_api/internal/config"
 	"olx_api/internal/database"
 	"olx_api/internal/handlers"
+	"olx_api/internal/middleware"
 )
 
 func main() {
@@ -30,7 +31,7 @@ func main() {
 
 	fmt.Println("Server is starting on port", cfg.Port)
 
-	listingHandler := handlers.NewListing_Handler(db,logger)
+	listingHandler := handlers.NewListing_Handler(db, logger)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", handlers.HealthzHandler)
@@ -41,9 +42,10 @@ func main() {
 	mux.HandleFunc("GET /listing/{id}", listingHandler.GetListingByID)
 	mux.HandleFunc("PUT /listing/{id}", handlers.UpdateListing(db))
 
+	handler_with_request_id := middleware.RequestId(mux)
 	srv := http.Server{
 		Addr:         ":" + cfg.Port,
-		Handler:      mux,
+		Handler:      handler_with_request_id,
 		ReadTimeout:  time.Second * 10,
 		WriteTimeout: time.Second * 30,
 		IdleTimeout:  time.Second * 60,
