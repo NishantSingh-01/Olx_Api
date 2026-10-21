@@ -64,6 +64,13 @@ func checkUserExists(db *sql.DB, email string) error {
 	return nil
 }
 
+//response fun //>> responseHandler
+func writeJSON(w http.ResponseWriter, status int, v any) {
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(status)
+    _ = json.NewEncoder(w).Encode(v)
+}
+
 //handler functions
 func (ah *AuthHandler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	var req RegisterInput
@@ -79,20 +86,11 @@ func (ah *AuthHandler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "All fields are required", http.StatusBadRequest)
 		return
 	}
-	if len(req.Password) < 8 {
-		http.Error(w, "Password must be at least 8 characters", http.StatusBadRequest)
+	if len(req.Password) < 8 || len(req.Password) > 72 {
+		http.Error(w, "Password must be between 8 and 72 characters", http.StatusBadRequest)
 		return
 	}
-	// ctx := r.Context()
-	// userExist := ah.db.QueryRowContext(ctx, `
-	//   SELECT id , email , password 
-	//   FROM users 
-	//   WHERE email = $1
-	// `, req.Email)
-	// if userExist == nil {
-	// 	http.Error(w, "User already exists", http.StatusBadRequest)
-	// 	return
-	// }
+
 	hashedPassword, err := hashPassword(req.Password)
 	if err != nil {
 		http.Error(w, "Failed to hash password", http.StatusInternalServerError)
@@ -113,10 +111,15 @@ func (ah *AuthHandler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to create user", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{
-		"message": "User created successfully",
+	// w.Header().Set("Content-Type", "application/json")
+	// w.WriteHeader(http.StatusOK)
+	// json.NewEncoder(w).Encode(map[string]string{
+	// 	"message": "User created successfully",
+	// })
+	writeJSON(w, http.StatusCreated, map[string]any{
+		"email":   req.Email,
+		"name":    req.Name,
+		"message": "user created successfully",
 	})
 }
 

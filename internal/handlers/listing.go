@@ -117,6 +117,7 @@ func (lh *Listing_Handler) DeleteListing(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(map[string]int64{"rows_affected": rowsAffected})
 }
+
 func (lh *Listing_Handler) CreateListing(w http.ResponseWriter, r *http.Request) {
 	var input ListingInput
 	err := json.NewDecoder(r.Body).Decode(&input)
