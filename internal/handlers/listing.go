@@ -7,9 +7,10 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	"olx_api/internal/httpx"
+	"olx_api/internal/middleware"
 	"strings"
 	"time"
-	"olx_api/internal/middleware"
 )
 
 // listing handeler
@@ -56,7 +57,7 @@ func (lh *Listing_Handler) ListingHandler(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		// log.Printf("List : Query Error : %v", err)
 		lh.logger.Error("Listing Query Error", "listing_handler", err)
-		http.Error(w, "Database query failed", http.StatusInternalServerError)
+		httpx.Error(w, "Database query failed", "DB_ERR", http.StatusInternalServerError)
 		return
 	}
 
@@ -118,6 +119,21 @@ func (lh *Listing_Handler) DeleteListing(w http.ResponseWriter, r *http.Request)
 	_ = json.NewEncoder(w).Encode(map[string]int64{"rows_affected": rowsAffected})
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// listing handler function
 func (lh *Listing_Handler) CreateListing(w http.ResponseWriter, r *http.Request) {
 	var input ListingInput
 	err := json.NewDecoder(r.Body).Decode(&input)

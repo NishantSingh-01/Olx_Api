@@ -54,7 +54,7 @@ func checkPasswordHash(password string, hash string) bool {
 	return err == nil
 }
 
-//repository
+// repository
 func checkUserExists(db *sql.DB, email string) error {
 	var id string
 	err := db.QueryRow("SELECT id FROM users WHERE email = $1", email).Scan(&id)
@@ -64,14 +64,14 @@ func checkUserExists(db *sql.DB, email string) error {
 	return nil
 }
 
-//response fun //>> responseHandler
+// response fun //>> responseHandler
 func writeJSON(w http.ResponseWriter, status int, v any) {
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(status)
-    _ = json.NewEncoder(w).Encode(v)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(v)
 }
 
-//handler functions
+// handler functions
 func (ah *AuthHandler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	var req RegisterInput
 	err := json.NewDecoder(r.Body).Decode(&req)
@@ -124,6 +124,35 @@ func (ah *AuthHandler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ah *AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
+	var input LoginInput
+	err := json.NewDecoder(r.Body).Decode(&input)
+	if err != nil {
+		ah.logger.Error("Login : Invalid request body", "login", err)
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	if input.Email == "" || input.Password == "" {
+		http.Error(w, "All fields are required", http.StatusBadRequest)
+		return
+	}
+	input.Email = strings.ToLower(strings.TrimSpace(input.Email))
+	if len(input.Password) < 8 || len(input.Password) > 72 {
+		http.Error(w, "Password must be between 8 and 72 characters", http.StatusBadRequest)
+		return
+	}
+	// var u users
+	// row := ah.db.QueryRowContext(r.Context(), `
+	// 	SELECT id,name,hashed_password FROM users WHERE email = $1
+	// 	`, input.Email)
+	// if err != nil {
+	// 	if err == sql.ErrNoRows {
+	// 		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
+	// 		return
+	// 	}
+	// 	ah.logger.Error("login: failed to find user", "error", err)
+	// 	http.Error(w, "Internal server error", http.StatusInternalServerError)
+	// 	return
+	// }
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Hello World"))
