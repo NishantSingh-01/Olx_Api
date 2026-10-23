@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"olx_api/internal/httpx"
 	"strings"
 	"time"
 
@@ -64,7 +65,7 @@ func checkUserExists(db *sql.DB, email string) error {
 	return nil
 }
 
-// response fun //>> responseHandler
+// response fun //>> responseHandler >> we can do it by httpx package 
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -116,7 +117,7 @@ func (ah *AuthHandler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	// json.NewEncoder(w).Encode(map[string]string{
 	// 	"message": "User created successfully",
 	// })
-	writeJSON(w, http.StatusCreated, map[string]any{
+	httpx.WriteJSON(w, http.StatusCreated, map[string]any{
 		"email":   req.Email,
 		"name":    req.Name,
 		"message": "user created successfully",

@@ -57,7 +57,7 @@ func (lh *Listing_Handler) ListingHandler(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		// log.Printf("List : Query Error : %v", err)
 		lh.logger.Error("Listing Query Error", "listing_handler", err)
-		httpx.Error(w, "Database query failed", "DB_ERR", http.StatusInternalServerError)
+		httpx.Error(w, "Database query failed", "test", http.StatusInternalServerError)
 		return
 	}
 
