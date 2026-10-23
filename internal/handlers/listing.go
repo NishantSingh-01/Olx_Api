@@ -45,7 +45,7 @@ func NewListing_Handler(db *sql.DB, logger *slog.Logger) *Listing_Handler {
 
 func (lh *Listing_Handler) ListingHandler(w http.ResponseWriter, r *http.Request) {
 
-	ctx, cancle := context.WithTimeout(r.Context(), 3*time.Second)//this is by gpt to stop cancelled query ohter method is direct to the cts pass there 
+	ctx, cancle := context.WithTimeout(r.Context(), 3*time.Second) //this is by gpt to stop cancelled query ohter method is direct to the cts pass there
 	defer cancle()
 	rows, err := lh.db.QueryContext(
 		ctx,
@@ -57,7 +57,7 @@ func (lh *Listing_Handler) ListingHandler(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		// log.Printf("List : Query Error : %v", err)
 		lh.logger.Error("Listing Query Error", "listing_handler", err)
-		httpx.Error(w, "Database query failed", "test", http.StatusInternalServerError)
+		httpx.Error(w, "Database query failed", httpx.Errinternal_error, http.StatusInternalServerError)
 		return
 	}
 
@@ -69,14 +69,16 @@ func (lh *Listing_Handler) ListingHandler(w http.ResponseWriter, r *http.Request
 		err := rows.Scan(&l.ID, &l.Title, &l.Description, &l.Price, &l.City, &l.Status, &l.CreatedAt)
 		if err != nil {
 			lh.logger.Error("Listing Scan Error", "listing_handler", err)
-			http.Error(w, "Database query failed", http.StatusInternalServerError)
+			// http.Error(w, "Database query failed", http.StatusInternalServerError)
+			httpx.Error(w, "Database query failed", httpx.Errinternal_error, http.StatusInternalServerError)
 			return
 		}
 		listings = append(listings, l)
 	}
 	if err := rows.Err(); err != nil {
 		lh.logger.Error("Listing Rows Error", "listing_handler", err)
-		http.Error(w, "Database query failed", http.StatusInternalServerError)
+		// http.Error(w, "Database query failed", http.StatusInternalServerError)
+		httpx.Error(w, "Listing Rows Error", httpx.Errinternal_error, http.StatusInternalServerError)
 		return
 	}
 
@@ -100,15 +102,17 @@ func (lh *Listing_Handler) DeleteListing(w http.ResponseWriter, r *http.Request)
 	   WHERE id = $1 
 	   `, id)
 	if err != nil {
-		lh.logger.Error("Delete : Exec Error", "listing_delete", id,"requestId",requestId ,"Error", err)
-		http.Error(w, "Database query failed", http.StatusInternalServerError)
+		lh.logger.Error("Delete : Exec Error", "listing_delete", id, "requestId", requestId, "Error", err)
+		// http.Error(w, "Database query failed", http.StatusInternalServerError)
+		httpx.Error(w, "Database query failed", httpx.Errinternal_error, http.StatusInternalServerError)
 		return
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		lh.logger.Error("Delete : RowsAffected Error", "listing_delete", id,"requestId",requestId , "Error", err)
-		http.Error(w, "Database query failed", http.StatusInternalServerError)
+		lh.logger.Error("Delete : RowsAffected Error", "listing_delete", id, "requestId", requestId, "Error", err)
+		// http.Error(w, "Database query failed", http.StatusInternalServerError)
+		httpx.Error(w, "Delete : RowsAffected Error", httpx.Errinternal_error, http.StatusInternalServerError)
 		return
 	}
 
@@ -118,20 +122,6 @@ func (lh *Listing_Handler) DeleteListing(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(map[string]int64{"rows_affected": rowsAffected})
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // listing handler function
 func (lh *Listing_Handler) CreateListing(w http.ResponseWriter, r *http.Request) {
@@ -183,48 +173,48 @@ func (lh *Listing_Handler) CreateListing(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "Database query failed", http.StatusInternalServerError)
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(listing)
 
 }
 func (lh *Listing_Handler) GetListingByID(w http.ResponseWriter, r *http.Request) {
-		id := r.PathValue("id")
-		if id == "" {
-			lh.logger.Error("GetListingByID : Invalid request body","listing_getbyid",nil)
-			http.Error(w, "Listing ID is required", http.StatusBadRequest)
-			return
-		}
-		var listing Listing
-		ctx := r.Context()
-		err := lh.db.QueryRowContext(ctx,`
+	id := r.PathValue("id")
+	if id == "" {
+		lh.logger.Error("GetListingByID : Invalid request body", "listing_getbyid", nil)
+		http.Error(w, "Listing ID is required", http.StatusBadRequest)
+		return
+	}
+	var listing Listing
+	ctx := r.Context()
+	err := lh.db.QueryRowContext(ctx, `
 		SELECT id , title , description , price , city , status , created_at 
 		FROM listings
 		WHERE id = $1
 		`, id).Scan(
-			&listing.ID,
-			&listing.Title,
-			&listing.Description,
-			&listing.Price,
-			&listing.City,
-			&listing.Status,
-			&listing.CreatedAt,
-		)
-		if err != nil {
-			if err == sql.ErrNoRows {
-				lh.logger.Error("GetListingByID : Listing not found","",err)
-				http.Error(w, "Listing not found", http.StatusNotFound)
-				return
-			}
-			lh.logger.Error("GetListingByID : Database query failed","listing_getbyid",err)
-			http.Error(w, "Database query failed", http.StatusInternalServerError)
+		&listing.ID,
+		&listing.Title,
+		&listing.Description,
+		&listing.Price,
+		&listing.City,
+		&listing.Status,
+		&listing.CreatedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			lh.logger.Error("GetListingByID : Listing not found", "", err)
+			http.Error(w, "Listing not found", http.StatusNotFound)
 			return
 		}
-		lh.logger.Info("GetListingByID : Success","listing_getbyid","listing",listing)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(map[string]Listing{"listing found successfully": listing})
+		lh.logger.Error("GetListingByID : Database query failed", "listing_getbyid", err)
+		http.Error(w, "Database query failed", http.StatusInternalServerError)
+		return
+	}
+	lh.logger.Info("GetListingByID : Success", "listing_getbyid", "listing", listing)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]Listing{"listing found successfully": listing})
 }
 
 func UpdateListing(db *sql.DB) http.HandlerFunc {
@@ -295,4 +285,3 @@ func UpdateListing(db *sql.DB) http.HandlerFunc {
 		_ = json.NewEncoder(w).Encode(listing)
 	}
 }
-
