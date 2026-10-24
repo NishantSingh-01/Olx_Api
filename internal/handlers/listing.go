@@ -23,13 +23,6 @@ type Listing struct {
 	Status      string    `json:"status"`
 	CreatedAt   time.Time `json:"created_at"`
 }
-type ListingInput struct {
-	Title       string  `json:"title"`
-	Description string  `json:"description"`
-	Price       float64 `json:"price"`
-	City        string  `json:"city"`
-	Status      string  `json:"status"`
-}
 
 type Listing_Handler struct {
 	db     *sql.DB
@@ -122,8 +115,6 @@ func (lh *Listing_Handler) DeleteListing(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(map[string]int64{"rows_affected": rowsAffected})
 }
-
-// listing handler function
 func (lh *Listing_Handler) CreateListing(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	requestId := middleware.GetRequestID(ctx)
@@ -136,45 +127,51 @@ func (lh *Listing_Handler) CreateListing(w http.ResponseWriter, r *http.Request)
 		httpx.Error(w, "Create : Invalid request body", httpx.Errmalformed_json, http.StatusBadRequest)
 		return
 	}
-	if strings.TrimSpace(input.Title) == "" || strings.TrimSpace(input.City) == "" || strings.TrimSpace(input.Description) == "" {
-		lh.logger.Error("Create : All fields are required", "requestId", requestId, "listing_create", err)
-		httpx.Error(w, "Create : All fields are required", httpx.Errvalidation_failed, http.StatusBadRequest)
+	if err := input.Validate(); err != nil {
+		httpx.Error(w, "Create : Validation failed", httpx.Errvalidation_failed, http.StatusUnprocessableEntity)
 		return
 	}
-	if input.Price < 0 {
-		lh.logger.Error("Create : Price cannot be negative", "requestId", requestId, "listing_create", err)
-		httpx.Error(w, "Create : Price cannot be negative", httpx.Errvalidation_failed, http.StatusBadRequest)
-		return
-	}
+	// {if strings.TrimSpace(input.Title) == "" || strings.TrimSpace(input.City) == "" || strings.TrimSpace(input.Description) == "" {
+	// 	lh.logger.Error("Create : All fields are required", "requestId", requestId, "listing_create", err)
+	// 	httpx.Error(w, "Create : All fields are required", httpx.Errvalidation_failed, http.StatusBadRequest)
+	// 	return
+	// }
+	// if input.Price < 0 {
+	// 	lh.logger.Error("Create : Price cannot be negative", "requestId", requestId, "listing_create", err)
+	// 	httpx.Error(w, "Create : Price cannot be negative", httpx.Errvalidation_failed, http.StatusBadRequest)
+	// 	return
+	// }}
 	//status logic there ? // todo
 
-	var listing Listing
+	var listing CreateListingResponse
 	rows := lh.db.QueryRowContext(ctx, `
 		INSERT INTO listings
 				(title, description, price, city, status)
 			VALUES ($1, $2, $3, $4, COALESCE(NULLIF($5, ''), 'active'))
-			RETURNING id, title, description, price, city, status, created_at
+			RETURNING id, title, created_at
 		`, input.Title, input.Description, input.Price, input.City, input.Status)
 
-	err = rows.Scan(&listing.ID, &listing.Title, &listing.Description, &listing.Price, &listing.City, &listing.Status, &listing.CreatedAt)
+	err = rows.Scan(&listing.ID, &listing.Title, &listing.CreatedAt)
 	if err != nil {
 		log.Printf("Create : Scan Error : %v", err)
 		lh.logger.Error("Create : Database query failed", "requestId", requestId, "listing_create", err)
 		http.Error(w, "Database query failed", http.StatusInternalServerError)
 		return
 	}
+
 	if err := rows.Err(); err != nil {
 		// log.Printf("Create : Rows Error : %v", err)
 		lh.logger.Error("Create : Database query failed", "listing_create", err)
 		http.Error(w, "Database query failed", http.StatusInternalServerError)
 		return
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(listing)
 
 }
+
+// listing handler function
 func (lh *Listing_Handler) GetListingByID(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
