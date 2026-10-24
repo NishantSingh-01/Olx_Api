@@ -125,47 +125,43 @@ func (lh *Listing_Handler) DeleteListing(w http.ResponseWriter, r *http.Request)
 
 // listing handler function
 func (lh *Listing_Handler) CreateListing(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	requestId := middleware.GetRequestID(ctx)
 	var input ListingInput
 	err := json.NewDecoder(r.Body).Decode(&input)
 	if err != nil {
 		// log.Printf("Create : Decode Error : %v", err)
-		lh.logger.Error("Create : Invalid request body", "listing_create", err)
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		lh.logger.Error("Create : Invalid request body", "requestId", requestId, "listing_create", err)
+		// http.Error(w, "Invalid request body", http.StatusBadRequest)
+		httpx.Error(w, "Create : Invalid request body", httpx.Errmalformed_json, http.StatusBadRequest)
 		return
 	}
 	if strings.TrimSpace(input.Title) == "" || strings.TrimSpace(input.City) == "" || strings.TrimSpace(input.Description) == "" {
-		lh.logger.Error("Create : All fields are required", "listing_create", err)
-		http.Error(w, "All fields are required", http.StatusBadRequest)
+		lh.logger.Error("Create : All fields are required", "requestId", requestId, "listing_create", err)
+		httpx.Error(w, "Create : All fields are required", httpx.Errvalidation_failed, http.StatusBadRequest)
 		return
 	}
 	if input.Price < 0 {
-		http.Error(w, "Price cannot be negative", http.StatusBadRequest)
+		lh.logger.Error("Create : Price cannot be negative", "requestId", requestId, "listing_create", err)
+		httpx.Error(w, "Create : Price cannot be negative", httpx.Errvalidation_failed, http.StatusBadRequest)
 		return
 	}
 	//status logic there ? // todo
 
 	var listing Listing
-	ctx := r.Context()
-	rows, err := lh.db.QueryContext(ctx, `
+	rows := lh.db.QueryRowContext(ctx, `
 		INSERT INTO listings
 				(title, description, price, city, status)
 			VALUES ($1, $2, $3, $4, COALESCE(NULLIF($5, ''), 'active'))
 			RETURNING id, title, description, price, city, status, created_at
 		`, input.Title, input.Description, input.Price, input.City, input.Status)
+
+	err = rows.Scan(&listing.ID, &listing.Title, &listing.Description, &listing.Price, &listing.City, &listing.Status, &listing.CreatedAt)
 	if err != nil {
-		// log.Printf("Create : Query Error : %v", err)
-		lh.logger.Error("Create : Database query failed", "listing_create", err)
+		log.Printf("Create : Scan Error : %v", err)
+		lh.logger.Error("Create : Database query failed", "requestId", requestId, "listing_create", err)
 		http.Error(w, "Database query failed", http.StatusInternalServerError)
 		return
-	}
-	for rows.Next() {
-		err := rows.Scan(&listing.ID, &listing.Title, &listing.Description, &listing.Price, &listing.City, &listing.Status, &listing.CreatedAt)
-		if err != nil {
-			// log.Printf("Create : Scan Error : %v", err)
-			lh.logger.Error("Create : Database query failed", "listing_create", err)
-			http.Error(w, "Database query failed", http.StatusInternalServerError)
-			return
-		}
 	}
 	if err := rows.Err(); err != nil {
 		// log.Printf("Create : Rows Error : %v", err)
