@@ -19,17 +19,14 @@ type CreateListingResponse struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-
-
 type validationError struct {
 	Field string
 	Msg   string
 }
 
 func (v validationError) Error() string {
-	return fmt.Sprintf("Validation Error: %s - %s", v.Field, v.Msg)
+	return fmt.Sprintf("%s:%s", v.Field, v.Msg)
 }
-
 func (req ListingInput) Validate() error {
 	if strings.TrimSpace(req.Title) == "" {
 		return validationError{

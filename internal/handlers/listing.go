@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"log"
 	"log/slog"
 	"net/http"
@@ -128,14 +129,20 @@ func (lh *Listing_Handler) CreateListing(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	if err := input.Validate(); err != nil {
-		httpx.Error(w, "Create : Validation failed", httpx.Errvalidation_failed, http.StatusUnprocessableEntity)
+		var ve validationError
+
+		if errors.As(err, &ve) {
+			httpx.ValidationError(w, ve.Msg, httpx.Errvalidation_failed, ve.Field, http.StatusUnprocessableEntity)
+			return
+		}
+		httpx.Error(w, "Validation failed", httpx.Errvalidation_failed, http.StatusUnprocessableEntity)
 		return
 	}
 	// {if strings.TrimSpace(input.Title) == "" || strings.TrimSpace(input.City) == "" || strings.TrimSpace(input.Description) == "" {
 	// 	lh.logger.Error("Create : All fields are required", "requestId", requestId, "listing_create", err)
 	// 	httpx.Error(w, "Create : All fields are required", httpx.Errvalidation_failed, http.StatusBadRequest)
 	// 	return
-	// }
+	// }}
 	// if input.Price < 0 {
 	// 	lh.logger.Error("Create : Price cannot be negative", "requestId", requestId, "listing_create", err)
 	// 	httpx.Error(w, "Create : Price cannot be negative", httpx.Errvalidation_failed, http.StatusBadRequest)
