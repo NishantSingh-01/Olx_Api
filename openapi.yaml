@@ -1,0 +1,290 @@
+openapi: 3.0.3
+info:
+  title: OLX API
+  version: 1.0.0
+  description: REST API backend for an OLX-style classified marketplace platform.
+servers:
+  - url: https://olx-api-5wfw.onrender.com
+    description: Production server
+paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      description: Returns the health status of the API server.
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  message:
+                    type: string
+                    example: server is Healthy
+                required:
+                  - status
+                  - message
+
+  /listing:
+    get:
+      summary: List listings
+      description: Retrieve the most recent 50 listings ordered by creation time descending.
+      responses:
+        '200':
+          description: A list of listings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Listing'
+    post:
+      summary: Create a listing
+      description: Create a new product listing.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListingInput'
+      responses:
+        '201':
+          description: Listing created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateListingResponse'
+        '400':
+          description: Malformed JSON body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+
+  /listing/{id}:
+    get:
+      summary: Get listing by ID
+      description: Retrieve detailed information for a specific listing by its ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The ID of the listing
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Listing found successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  listing found successfully:
+                    $ref: '#/components/schemas/Listing'
+                required:
+                  - listing found successfully
+        '404':
+          description: Listing not found
+    put:
+      summary: Update a listing
+      description: Update title, description, price, city, and status of an existing listing.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The ID of the listing to update
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListingInput'
+      responses:
+        '200':
+          description: Listing updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Listing'
+        '400':
+          description: Invalid request body or missing required fields
+        '404':
+          description: Listing not found
+    delete:
+      summary: Delete a listing
+      description: Delete a listing by its ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The ID of the listing to delete
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Listing deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rows_affected:
+                    type: integer
+                    example: 1
+                required:
+                  - rows_affected
+
+components:
+  schemas:
+    Listing:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "e6f47702-861c-4b57-a36c-2f928e08d511"
+        title:
+          type: string
+          example: "iPhone 13 128GB"
+        description:
+          type: string
+          example: "Mint condition iPhone 13, battery health 88%"
+        price:
+          type: integer
+          example: 45000
+        city:
+          type: string
+          example: "Mumbai"
+        status:
+          type: string
+          example: "active"
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-03-24T12:00:00Z"
+      required:
+        - id
+        - title
+        - description
+        - price
+        - city
+        - status
+        - created_at
+
+    ListingInput:
+      type: object
+      properties:
+        title:
+          type: string
+          example: "iPhone 13 128GB"
+        description:
+          type: string
+          example: "Mint condition iPhone 13, battery health 88%"
+        price:
+          type: number
+          example: 45000
+        city:
+          type: string
+          example: "Mumbai"
+        status:
+          type: string
+          example: "active"
+      required:
+        - title
+        - description
+        - price
+        - city
+
+    CreateListingResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "e6f47702-861c-4b57-a36c-2f928e08d511"
+        title:
+          type: string
+          example: "iPhone 13 128GB"
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-03-24T12:00:00Z"
+      required:
+        - id
+        - title
+        - created_at
+
+    ErrorEnvelope:
+      type: object
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorPayload'
+      required:
+        - error
+
+    ErrorPayload:
+      type: object
+      properties:
+        code:
+          type: string
+          example: "internal_error"
+        message:
+          type: string
+          example: "Database query failed"
+        field:
+          type: string
+          example: "title"
+      required:
+        - code
+        - message
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: "malformed_json"
+            message:
+              type: string
+              example: "Create : Invalid request body"
+          required:
+            - code
+            - message
+      required:
+        - error
+
+    ValidationErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: "validation_failed"
+            message:
+              type: string
+              example: "Title is required"
+            field:
+              type: string
+              example: "title"
+          required:
+            - code
+            - message
+            - field
+      required:
+        - error
