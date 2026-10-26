@@ -28,13 +28,8 @@ func VerifyToken(tokenString string, secret string) (*jwt.Token, error) {
 		}
 		return []byte(secret), nil
 	})
-
 	if err != nil {
 		return nil, err
-	}
-
-	if !token.Valid {
-		return nil, fmt.Errorf("invalid token")
 	}
 	return token, nil
 }

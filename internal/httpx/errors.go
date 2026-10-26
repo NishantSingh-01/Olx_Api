@@ -17,6 +17,7 @@ const (
 	Errforbidden         Code = "forbidden"
 	Errconflict          Code = "conflict"
 	Errrate_limited      Code = "rate_limited"
+	ErrUnauthorized      Code = "unauthorized"
 )
 
 type ErrorEnvelope struct {
