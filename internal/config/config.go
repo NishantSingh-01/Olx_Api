@@ -10,6 +10,7 @@ type Config struct {
 	Port        string
 	Env         string
 	DatabaseURL string
+	JWTSecret 	string
 }
 
 
@@ -28,9 +29,14 @@ func MustLoad() Config {
 	if db_url == "" {
 		panic("DATABASE_URL is Required")
 	}
+	jwt_secret := os.Getenv("JWT_SECRET")
+	if jwt_secret == "" {
+		panic("JWT_SECRET is Required")
+	}
 	return Config{
 		Port:        port,
 		Env:         env,
 		DatabaseURL: db_url,
+		JWTSecret: 	jwt_secret,
 	}
 }
