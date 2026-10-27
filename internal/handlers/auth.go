@@ -6,7 +6,9 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"olx_api/internal/config"
 	"olx_api/internal/httpx"
+	"olx_api/internal/utils"
 	"strings"
 	"time"
 
@@ -97,10 +99,18 @@ func (ah *AuthHandler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = ah.db.ExecContext(r.Context(), `
+	// var id,email,name string
+	type USER struct{
+		id string
+		email string
+		name string
+	}
+	var user USER
+	err = ah.db.QueryRowContext(r.Context(), `
 		INSERT INTO users (email, name, hashed_password)
 		VALUES ($1, $2, $3)
-	`, req.Email, req.Name, hashedPassword)
+		RETURNING id,email,name
+	`, req.Email, req.Name, hashedPassword).Scan(&user.id,&user.email,&user.name)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" { // unique_violation
@@ -116,13 +126,20 @@ func (ah *AuthHandler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	// json.NewEncoder(w).Encode(map[string]string{
 	// 	"message": "User created successfully",
 	// })
+	
+	cfg := config.MustLoad()
+	token,err := utils.GenerateToken(cfg.JWTSecret,user.id,time.Hour*24*7)
+	if err != nil {
+		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
+		return
+	}
 	httpx.WriteJSON(w, http.StatusCreated, map[string]any{
-		"email":   req.Email,
-		"name":    req.Name,
+		"token":   token,
+		"email":   user.email,
+		"name":    user.name,
 		"message": "user created successfully",
 	})
 }
-
 func (ah *AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	var input LoginInput
 	err := json.NewDecoder(r.Body).Decode(&input)
@@ -157,7 +174,6 @@ func (ah *AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Hello World"))
 }
-
 func (ah *AuthHandler) RefreshHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Hello World"))
