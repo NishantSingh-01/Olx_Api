@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"olx_api/internal/config"
@@ -12,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -37,6 +39,10 @@ type RegisterInput struct {
 	Name     string `json:"name"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
+}
+type RefreshInput struct {
+	RefreshToken string `json:"refresh_token"`
+	Token        string `json:"token"`
 }
 type AuthResponse struct {
 	ID           string    `json:"id"`
@@ -175,8 +181,82 @@ func (ah *AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Hello World"))
 }
 func (ah *AuthHandler) RefreshHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Hello World"))
+	var input RefreshInput
+	if r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&input)
+	}
+
+	refreshTokenString := strings.TrimSpace(input.RefreshToken)
+	if refreshTokenString == "" {
+		refreshTokenString = strings.TrimSpace(input.Token)
+	}
+	if refreshTokenString == "" {
+		authHeader := r.Header.Get("Authorization")
+		parts := strings.Fields(authHeader)
+		if len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
+			refreshTokenString = parts[1]
+		}
+	}
+
+	if refreshTokenString == "" {
+		httpx.Error(w, "Refresh token is required", httpx.Errvalidation_failed, http.StatusBadRequest)
+		return
+	}
+
+	cfg := config.MustLoad()
+	token, err := utils.VerifyToken(refreshTokenString, cfg.JWTSecret)
+	if err != nil || token == nil || !token.Valid {
+		ah.logger.Error("Refresh : invalid or expired token", "refresh", err)
+		httpx.Error(w, "Invalid or expired refresh token", httpx.ErrUnauthorized, http.StatusUnauthorized)
+		return
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok || claims == nil {
+		httpx.Error(w, "Invalid token claims", httpx.ErrUnauthorized, http.StatusUnauthorized)
+		return
+	}
+
+	var userID string
+	switch v := claims["user_id"].(type) {
+	case string:
+		userID = v
+	case float64:
+		userID = fmt.Sprintf("%.0f", v)
+	}
+
+	if strings.TrimSpace(userID) == "" {
+		httpx.Error(w, "Invalid user in token claims", httpx.ErrUnauthorized, http.StatusUnauthorized)
+		return
+	}
+
+	var userExists bool
+	err = ah.db.QueryRowContext(r.Context(), "SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)", userID).Scan(&userExists)
+	if err != nil || !userExists {
+		ah.logger.Error("Refresh : user not found or database error", "error", err, "user_id", userID)
+		httpx.Error(w, "User not found", httpx.ErrUnauthorized, http.StatusUnauthorized)
+		return
+	}
+
+	newToken, err := utils.GenerateToken(cfg.JWTSecret, userID, time.Hour*24*7)
+	if err != nil {
+		ah.logger.Error("Refresh : failed to generate token", "error", err)
+		httpx.Error(w, "Failed to generate token", httpx.Errinternal_error, http.StatusInternalServerError)
+		return
+	}
+
+	newRefreshToken, err := utils.GenerateToken(cfg.JWTSecret, userID, time.Hour*24*30)
+	if err != nil {
+		ah.logger.Error("Refresh : failed to generate refresh token", "error", err)
+		httpx.Error(w, "Failed to generate refresh token", httpx.Errinternal_error, http.StatusInternalServerError)
+		return
+	}
+
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+		"token":         newToken,
+		"refresh_token": newRefreshToken,
+		"message":       "Token refreshed successfully",
+	})
 }
 func (ah *AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
