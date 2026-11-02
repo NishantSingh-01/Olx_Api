@@ -51,6 +51,11 @@ type AuthResponse struct {
 	RefreshToken string    `json:"refresh_token"`
 	CreatedAt    time.Time `json:"created_at"`
 }
+type ProfileResponse struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}
 
 // utils
 func hashPassword(password string) (string, error) {
@@ -283,7 +288,61 @@ func (ah *AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 func (ah *AuthHandler) GetMyProfileHandler(w http.ResponseWriter, r *http.Request) {
+	var userID string
+	if v := r.Context().Value("user_id"); v != nil {
+		switch id := v.(type) {
+		case string:
+			userID = id
+		case uint:
+			userID = fmt.Sprintf("%d", id)
+		case int:
+			userID = fmt.Sprintf("%d", id)
+		case float64:
+			userID = fmt.Sprintf("%.0f", id)
+		}
+	}
 
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Hello World"))
+	if userID == "" {
+		authHeader := r.Header.Get("Authorization")
+		parts := strings.Fields(authHeader)
+		if len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
+			cfg := config.MustLoad()
+			token, err := utils.VerifyToken(parts[1], cfg.JWTSecret)
+			if err == nil && token != nil && token.Valid {
+				if claims, ok := token.Claims.(jwt.MapClaims); ok && claims != nil {
+					switch id := claims["user_id"].(type) {
+					case string:
+						userID = id
+					case float64:
+						userID = fmt.Sprintf("%.0f", id)
+					}
+				}
+			}
+		}
+	}
+
+	if strings.TrimSpace(userID) == "" {
+		ah.logger.Warn("GetMyProfile : unauthorized access attempt")
+		httpx.Error(w, "Unauthorized: authentication required", httpx.ErrUnauthorized, http.StatusUnauthorized)
+		return
+	}
+
+	var profile ProfileResponse
+	err := ah.db.QueryRowContext(r.Context(), `
+		SELECT id, name, email
+		FROM users
+		WHERE id = $1
+	`, userID).Scan(&profile.ID, &profile.Name, &profile.Email)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			ah.logger.Warn("GetMyProfile : user not found", "user_id", userID)
+			httpx.Error(w, "User not found", httpx.Errnot_found, http.StatusNotFound)
+			return
+		}
+		ah.logger.Error("GetMyProfile : database query failed", "error", err, "user_id", userID)
+		httpx.Error(w, "Database query failed", httpx.Errinternal_error, http.StatusInternalServerError)
+		return
+	}
+
+	httpx.WriteJSON(w, http.StatusOK, profile)
 }
