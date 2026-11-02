@@ -259,8 +259,28 @@ func (ah *AuthHandler) RefreshHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 func (ah *AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Hello World"))
+	// Clear any auth cookies that may have been set
+	http.SetCookie(w, &http.Cookie{
+		Name:     "token",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Expires:  time.Unix(0, 0),
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Expires:  time.Unix(0, 0),
+	})
+
+	ah.logger.Info("LogoutHandler : user logged out successfully")
+	httpx.WriteJSON(w, http.StatusOK, map[string]string{
+		"message": "Logged out successfully",
+	})
 }
 func (ah *AuthHandler) GetMyProfileHandler(w http.ResponseWriter, r *http.Request) {
 
