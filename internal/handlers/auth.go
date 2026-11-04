@@ -192,9 +192,9 @@ func (ah *AuthHandler) RefreshHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	refreshTokenString := strings.TrimSpace(input.RefreshToken)
-	if refreshTokenString == "" {
-		refreshTokenString = strings.TrimSpace(input.Token)
-	}
+	// if refreshTokenString == "" {
+	// 	refreshTokenString = strings.TrimSpace(input.Token)
+	// }
 	if refreshTokenString == "" {
 		authHeader := r.Header.Get("Authorization")
 		parts := strings.Fields(authHeader)
