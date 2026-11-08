@@ -327,22 +327,22 @@ func (ah *AuthHandler) GetMyProfileHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	var profile ProfileResponse
-	err := ah.db.QueryRowContext(r.Context(), `
-		SELECT id, name, email
-		FROM users
-		WHERE id = $1
-	`, userID).Scan(&profile.ID, &profile.Name, &profile.Email)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			ah.logger.Warn("GetMyProfile : user not found", "user_id", userID)
-			httpx.Error(w, "User not found", httpx.Errnot_found, http.StatusNotFound)
-			return
-		}
-		ah.logger.Error("GetMyProfile : database query failed", "error", err, "user_id", userID)
-		httpx.Error(w, "Database query failed", httpx.Errinternal_error, http.StatusInternalServerError)
-		return
-	}
+	// var profile ProfileResponse
+	// err := ah.db.QueryRowContext(r.Context(), `
+	// 	SELECT id, name, email
+	// 	FROM users
+	// 	WHERE id = $1
+	// `, userID).Scan(&profile.ID, &profile.Name, &profile.Email)
+	// if err != nil {
+	// 	if errors.Is(err, sql.ErrNoRows) {
+	// 		ah.logger.Warn("GetMyProfile : user not found", "user_id", userID)
+	// 		httpx.Error(w, "User not found", httpx.Errnot_found, http.StatusNotFound)
+	// 		return
+	// 	}
+	// 	ah.logger.Error("GetMyProfile : database query failed", "error", err, "user_id", userID)
+	// 	httpx.Error(w, "Database query failed", httpx.Errinternal_error, http.StatusInternalServerError)
+	// 	return
+	// }
 
 	httpx.WriteJSON(w, http.StatusOK, profile)
 }
